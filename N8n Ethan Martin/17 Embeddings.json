@@ -1,0 +1,235 @@
+{
+  "name": "17 Embeddings",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -656,
+        256
+      ],
+      "id": "7dc677b6-ce48-4966-989b-c83e206d4d49",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        256
+      ],
+      "id": "363c7adc-c2ec-4377-afdb-323401bcd214",
+      "name": "Get many messages",
+      "webhookId": "c2b715d6-ae96-49fc-b752-5f1fab9e963f",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "CDq0BjeFKrC4wR6c",
+          "name": "Microsoft Outlook account 17"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => { \n  const j = item.json; \n \n  const messageId = j.id || ''; \n  const conversationId = j.conversationId || ''; \n  const sender = j.from || ''; \n  const subject = j.subject || ''; \n  const bodyText = j.bodyPreview || ''; \n  const recipients = Array.isArray(j.to) ? j.to.join(', ') : ''; \n  const hasAttachments = j.hasAttachments ?? false; \n \n  const textForEmbedding = \n    `search_document: Objet: ${subject}\\n` + \n    `Expéditeur: ${sender}\\n` + \n    `Destinataire(s): ${recipients}\\n` + \n    `Message:\\n${bodyText}`; \n \n  return { \n    json: { \n      message_id: messageId, \n      conversation_id: conversationId, \n      mailbox: 'etudiant@cpnv.me', \n      sender, \n      subject, \n      body_text: bodyText, \n      recipients, \n      has_attachments: hasAttachments, \n      text_for_embedding: textForEmbedding \n    } \n  }; \n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        256
+      ],
+      "id": "060d7bc5-67bb-4bd8-8d8e-b8a72a5967fa",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        176,
+        256
+      ],
+      "id": "547ebc6a-dc03-4485-9332-a20d344680cd",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => { \n  const j = item.json; \n \n  const record = { \n    message_id: j.message_id, \n    conversation_id: j.conversation_id, \n    mailbox: j.mailbox, \n    sender: j.sender, \n    recipients: j.recipients, \n    subject: j.subject, \n    body_text: j.body_text, \n    has_attachments: j.has_attachments, \n    text_for_embedding: j.text_for_embedding, \n    embedding_model: j.model, \n    embedding: Array.isArray(j.embeddings) ? j.embeddings[0] : [], \n    created_at: new Date().toISOString() \n  }; \n \n  return { \n    json: { \n      line: JSON.stringify(record) \n    } \n  }; \n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        256
+      ],
+      "id": "96c9a7e0-c490-468c-9bd5-2b3090f09580",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://gpu.cpnv.me:11434/api/embeddings",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "nomic-embed-text-v2-moe"
+            },
+            {
+              "name": "input",
+              "value": "=$json.text_for_embedding"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "34204cad-2717-4ad7-8323-1dbeac0b3d18",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "embeddingSmith.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        592,
+        256
+      ],
+      "id": "6b70c26f-9790-4b65-b715-3da2f6c68097",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/data/embeddingSmith.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        752,
+        240
+      ],
+      "id": "aa0abebb-de04-46f2-867c-52da93597779",
+      "name": "Read/Write Files from Disk"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get many messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many messages": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "3af07aa3-ee3b-4fb0-ac45-5521179bfde9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9d30d1f1874df20c0dc0c5e334ba45c46152a3794403b022f504026a467e081f"
+  },
+  "id": "kIdMygCY--c4fkf_1reiT",
+  "tags": []
+}

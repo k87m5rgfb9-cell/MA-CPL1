@@ -1,0 +1,138 @@
+{
+  "name": "TP1_Email_Classifier_Ethan",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlookTrigger",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        -112
+      ],
+      "id": "f81c8f7f-0ee2-4fcc-bf2a-e893843728c9",
+      "name": "Microsoft Outlook Trigger",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "CDq0BjeFKrC4wR6c",
+          "name": "Microsoft Outlook account 17"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => { \n  const email = item.json; \n  const subject = email.subject || \"\"; \n  const body = email.bodyPreview || \"\"; \n  const sender = email.from || \"\"; \n  const messageId = email.id || \"\"; \n  const emailText = `Objet: ${subject} \nExpéditeur: ${sender} \nMessage: \n${body}`; \n  return { \n    json: { \n      messageId, \n      subject, \n      sender, \n      body, \n      emailText \n    } \n  }; \n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        -112
+      ],
+      "id": "b6a3edc3-1a3a-465e-b078-033345b91a99",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://gpu.cpnv.me:11434/api/generate ",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "Matheswaran/email-classifier:latest"
+            },
+            {
+              "name": "prompt",
+              "value": "={{ \"Classify the following email and return JSON only.\\n\\n\" +  $json.emailText }} "
+            },
+            {
+              "name": "stream",
+              "value": "={{ false }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -128,
+        -112
+      ],
+      "id": "0628cac7-567c-4d04-a081-b5a3b7dc4787",
+      "name": "Envois à API Ollama"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => { \nconst parsed = JSON.parse(item.json.response); \nconst classification = parsed.classifications?.[0] || {}; \nreturn { \njson: { \nrequestType: classification.requestType || \"\", \nrequestSubType: classification.requestSubType?.[0] || \"\", \nconfidenceScore: parsed.confidenceScore || null, \nreasoning: parsed.reasoning || \"\", \noutlookCategory: classification.requestType || \"Other\" \n} \n}; \n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        -112
+      ],
+      "id": "dec10189-9842-458f-8093-b1f36abc9298",
+      "name": "Mise en forme"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Microsoft Outlook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Envois à API Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envois à API Ollama": {
+      "main": [
+        [
+          {
+            "node": "Mise en forme",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "1872f38a-d391-464e-a1ce-871db83faeab",
+  "meta": {
+    "instanceId": "9d30d1f1874df20c0dc0c5e334ba45c46152a3794403b022f504026a467e081f"
+  },
+  "id": "dyHrXdOR5d0_yrh6voF1M",
+  "tags": []
+}
